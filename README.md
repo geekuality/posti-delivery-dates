@@ -56,12 +56,28 @@ The next **future** delivery date in ISO format (YYYY-MM-DD). Past dates are aut
 
 ### Display in Dashboard
 
+Simple card showing the next delivery date:
 ```yaml
-type: entities
-entities:
-  - entity: sensor.posti_00100_next_delivery
-    secondary_info: attribute
-    attribute: days_until_next
+type: entity
+entity: sensor.posti_00100_next_delivery
+```
+
+Card with additional attributes:
+```yaml
+type: attribute
+entity: sensor.posti_00100_next_delivery
+attribute: next_scheduled_date
+name: Next Mail Delivery
+unit: ""
+```
+
+Using a markdown card to show multiple attributes:
+```yaml
+type: markdown
+content: |
+  **Next Delivery:** {{ states('sensor.posti_00100_next_delivery') }}
+  **Days Until:** {{ state_attr('sensor.posti_00100_next_delivery', 'days_until_next') }}
+  **Last Delivery:** {{ state_attr('sensor.posti_00100_next_delivery', 'last_scheduled_date') or 'N/A' }}
 ```
 
 ### Automation Example
