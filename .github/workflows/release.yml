@@ -1,0 +1,21 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  release:
+    name: Prepare release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate release
+        run: |
+          echo "Release ${{ github.event.release.tag_name }} published"
+          echo "Checking integration files..."
+          test -f custom_components/posti_delivery/manifest.json
+          test -f custom_components/posti_delivery/__init__.py
+          echo "All required files present"
