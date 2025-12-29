@@ -1,7 +1,7 @@
 """Sensor platform for Posti Delivery Dates integration."""
 from __future__ import annotations
 
-from datetime import datetime, date
+from datetime import date, datetime
 
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
