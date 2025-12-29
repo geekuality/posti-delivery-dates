@@ -25,7 +25,7 @@ jobs:
         run: pip install ruff
 
       - name: Run ruff check
-        run: ruff check custom_components/posti_delivery
+        run: ruff check .
 
       - name: Run ruff format check
-        run: ruff format --check custom_components/posti_delivery
+        run: ruff format --check .
