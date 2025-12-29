@@ -39,15 +39,18 @@ To add multiple postal codes, repeat the process.
 Each postal code creates a sensor with the following:
 
 ### State
-The next (earliest) delivery date in ISO format (YYYY-MM-DD)
+The next **future** delivery date in ISO format (YYYY-MM-DD). Past dates are automatically filtered out.
 
 ### Attributes
 - `postal_code`: The postal code being tracked
-- `next_delivery`: The next delivery date (same as state)
+- `next_delivery`: The next future delivery date (same as state, `null` if no future dates)
+- `last_scheduled_date`: The most recent past delivery date (`null` if none or at initial setup)
 - `days_until_next`: Number of days until the next delivery
-- `delivery_count`: Total number of delivery dates returned
-- `all_delivery_dates`: List of all delivery dates
+- `delivery_count`: Total number of delivery dates returned by the API
+- `all_delivery_dates`: Complete list of all delivery dates from API (includes past dates)
 - `last_updated`: Timestamp of last successful API fetch
+
+**Note:** The sensor automatically filters past dates from the state and `next_delivery`, but preserves all dates (including past) in `all_delivery_dates` for reference.
 
 ## Example Usage
 

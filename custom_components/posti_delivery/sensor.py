@@ -14,6 +14,7 @@ from .const import (
     ATTR_ALL_DELIVERY_DATES,
     ATTR_DAYS_UNTIL_NEXT,
     ATTR_DELIVERY_COUNT,
+    ATTR_LAST_SCHEDULED_DATE,
     ATTR_LAST_UPDATED,
     ATTR_NEXT_DELIVERY,
     ATTR_POSTAL_CODE,
@@ -66,7 +67,7 @@ class PostiDeliverySensor(CoordinatorEntity, SensorEntity):
 
     @property
     def native_value(self) -> str | None:
-        """Return the state of the sensor (next delivery date)."""
+        """Return the state of the sensor (next future delivery date)."""
         if not self.coordinator.data:
             return None
 
@@ -74,7 +75,15 @@ class PostiDeliverySensor(CoordinatorEntity, SensorEntity):
         if not delivery_dates:
             return None
 
-        return delivery_dates[0]
+        # Filter to get only future dates (today or later)
+        today = date.today()
+        future_dates = [
+            d for d in delivery_dates
+            if datetime.strptime(d, "%Y-%m-%d").date() >= today
+        ]
+
+        # Return the first future date, or None if all dates are in the past
+        return future_dates[0] if future_dates else None
 
     @property
     def extra_state_attributes(self) -> dict[str, any]:
@@ -90,23 +99,43 @@ class PostiDeliverySensor(CoordinatorEntity, SensorEntity):
                 ATTR_POSTAL_CODE: self._postal_code,
                 ATTR_DELIVERY_COUNT: 0,
                 ATTR_ALL_DELIVERY_DATES: [],
+                ATTR_NEXT_DELIVERY: None,
+                ATTR_LAST_SCHEDULED_DATE: None,
+                ATTR_DAYS_UNTIL_NEXT: None,
                 ATTR_LAST_UPDATED: last_updated.isoformat() if last_updated else None,
             }
 
-        next_delivery = delivery_dates[0]
-        days_until_next = None
+        today = date.today()
+
+        # Separate past and future dates
+        future_dates = [
+            d for d in delivery_dates
+            if datetime.strptime(d, "%Y-%m-%d").date() >= today
+        ]
+        past_dates = [
+            d for d in delivery_dates
+            if datetime.strptime(d, "%Y-%m-%d").date() < today
+        ]
+
+        # Get next delivery (first future date)
+        next_delivery = future_dates[0] if future_dates else None
+
+        # Get last scheduled date (most recent past date)
+        last_scheduled = past_dates[-1] if past_dates else None
 
         # Calculate days until next delivery
-        try:
-            next_date = datetime.strptime(next_delivery, "%Y-%m-%d").date()
-            today = date.today()
-            days_until_next = (next_date - today).days
-        except (ValueError, TypeError):
-            pass
+        days_until_next = None
+        if next_delivery:
+            try:
+                next_date = datetime.strptime(next_delivery, "%Y-%m-%d").date()
+                days_until_next = (next_date - today).days
+            except (ValueError, TypeError):
+                pass
 
         return {
             ATTR_POSTAL_CODE: self._postal_code,
             ATTR_NEXT_DELIVERY: next_delivery,
+            ATTR_LAST_SCHEDULED_DATE: last_scheduled,
             ATTR_DAYS_UNTIL_NEXT: days_until_next,
             ATTR_DELIVERY_COUNT: len(delivery_dates),
             ATTR_ALL_DELIVERY_DATES: delivery_dates,
