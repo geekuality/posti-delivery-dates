@@ -2,10 +2,13 @@
   "config": {
     "step": {
       "user": {
-        "title": "Add Posti Delivery Dates",
-        "description": "Enter the postal code to track delivery dates for.",
+        "title": "Set up Posti Delivery Dates",
+        "description": "Configure tracking for mail delivery dates in Finland. Enter a 5-digit Finnish postal code.",
         "data": {
           "postal_code": "Postal Code"
+        },
+        "data_description": {
+          "postal_code": "The Finnish postal code to track delivery dates for (e.g., 00100)"
         }
       }
     },

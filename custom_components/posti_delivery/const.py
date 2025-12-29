@@ -24,5 +24,5 @@ ATTR_POSTAL_CODE = "postal_code"
 ATTR_LAST_UPDATED = "last_updated"
 
 # Device Info
-MANUFACTURER = "Posti Group"
-MODEL = "Delivery Schedule"
+MANUFACTURER = "Community Integration"
+MODEL = "Posti Delivery Tracker"
