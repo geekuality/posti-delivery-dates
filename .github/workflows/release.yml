@@ -16,6 +16,6 @@ jobs:
         run: |
           echo "Release ${{ github.event.release.tag_name }} published"
           echo "Checking integration files..."
-          test -f custom_components/posti_delivery/manifest.json
-          test -f custom_components/posti_delivery/__init__.py
+          test -f manifest.json
+          test -f __init__.py
           echo "All required files present"
