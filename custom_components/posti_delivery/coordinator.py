@@ -1,9 +1,9 @@
 """DataUpdateCoordinator for Posti Delivery Dates integration."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta
 import logging
 import random
+from datetime import datetime, timedelta
 
 import aiohttp
 
