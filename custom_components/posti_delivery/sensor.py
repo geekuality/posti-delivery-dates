@@ -16,7 +16,7 @@ from .const import (
     ATTR_DELIVERY_COUNT,
     ATTR_LAST_SCHEDULED_DATE,
     ATTR_LAST_UPDATED,
-    ATTR_NEXT_DELIVERY,
+    ATTR_NEXT_SCHEDULED_DATE,
     ATTR_POSTAL_CODE,
     CONF_POSTAL_CODE,
     DOMAIN,
@@ -99,7 +99,7 @@ class PostiDeliverySensor(CoordinatorEntity, SensorEntity):
                 ATTR_POSTAL_CODE: self._postal_code,
                 ATTR_DELIVERY_COUNT: 0,
                 ATTR_ALL_DELIVERY_DATES: [],
-                ATTR_NEXT_DELIVERY: None,
+                ATTR_NEXT_SCHEDULED_DATE: None,
                 ATTR_LAST_SCHEDULED_DATE: None,
                 ATTR_DAYS_UNTIL_NEXT: None,
                 ATTR_LAST_UPDATED: last_updated.isoformat() if last_updated else None,
@@ -134,7 +134,7 @@ class PostiDeliverySensor(CoordinatorEntity, SensorEntity):
 
         return {
             ATTR_POSTAL_CODE: self._postal_code,
-            ATTR_NEXT_DELIVERY: next_delivery,
+            ATTR_NEXT_SCHEDULED_DATE: next_delivery,
             ATTR_LAST_SCHEDULED_DATE: last_scheduled,
             ATTR_DAYS_UNTIL_NEXT: days_until_next,
             ATTR_DELIVERY_COUNT: len(delivery_dates),

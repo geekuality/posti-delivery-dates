@@ -18,7 +18,7 @@ CONF_INITIAL_DATA = "initial_data"
 
 # Sensor Attributes
 ATTR_ALL_DELIVERY_DATES = "all_delivery_dates"
-ATTR_NEXT_DELIVERY = "next_delivery"
+ATTR_NEXT_SCHEDULED_DATE = "next_scheduled_date"
 ATTR_LAST_SCHEDULED_DATE = "last_scheduled_date"
 ATTR_DAYS_UNTIL_NEXT = "days_until_next"
 ATTR_DELIVERY_COUNT = "delivery_count"
