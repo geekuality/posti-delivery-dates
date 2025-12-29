@@ -25,4 +25,4 @@ ATTR_LAST_UPDATED = "last_updated"
 
 # Device Info
 MANUFACTURER = "Community Integration"
-MODEL = "Posti Delivery Tracker"
+MODEL = "Posti Mail Delivery Schedule"
