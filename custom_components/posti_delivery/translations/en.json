@@ -1,0 +1,25 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Posti Delivery Dates",
+        "description": "Configure tracking for mail delivery dates in Finland. Enter a 5-digit Finnish postal code.",
+        "data": {
+          "postal_code": "Postal Code"
+        },
+        "data_description": {
+          "postal_code": "The Finnish postal code to track delivery dates for (e.g., 00100)"
+        }
+      }
+    },
+    "error": {
+      "invalid_postal_code": "Invalid postal code. Must be exactly 5 digits.",
+      "cannot_connect": "Failed to connect to Posti API. Please check your internet connection and try again.",
+      "no_data": "No delivery data found for this postal code.",
+      "unknown": "An unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "This postal code is already configured."
+    }
+  }
+}

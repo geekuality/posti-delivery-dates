@@ -1,0 +1,25 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Postin jakeluaikojen asetus",
+        "description": "Määritä postin jakeluaikojen seuranta Suomessa. Syötä 5-numeroinen postinumero.",
+        "data": {
+          "postal_code": "Postinumero"
+        },
+        "data_description": {
+          "postal_code": "Suomalainen postinumero, jonka jakeluaikoja haluat seurata (esim. 00100)"
+        }
+      }
+    },
+    "error": {
+      "invalid_postal_code": "Virheellinen postinumero. Postinumeron on oltava täsmälleen 5 numeroa.",
+      "cannot_connect": "Yhteyden muodostaminen Postin rajapintaan epäonnistui. Tarkista internetyhteytesi ja yritä uudelleen.",
+      "no_data": "Tälle postinumerolle ei löytynyt jakelutietoja.",
+      "unknown": "Odottamaton virhe tapahtui."
+    },
+    "abort": {
+      "already_configured": "Tämä postinumero on jo määritetty."
+    }
+  }
+}
