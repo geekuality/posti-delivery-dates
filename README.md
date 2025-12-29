@@ -98,9 +98,12 @@ This integration uses Posti Finland's public delivery date API:
 
 ## Update Strategy
 
-To prevent API load spikes, the integration implements:
-- **Initial offset**: 0-30 minute random delay on first fetch
-- **Update jitter**: ±2 minute randomization on each update
+The integration provides **instant sensor availability** by reusing data from the configuration validation step.
+
+To prevent API load spikes during regular updates, the integration implements:
+- **Instant first data**: Sensor shows data immediately using cached validation data
+- **Scheduled updates**: Next update occurs after 12 hours + random offset (0-30 minutes)
+- **Update jitter**: ±2 minute randomization on each subsequent update
 - This ensures multiple postal codes don't all update simultaneously
 
 ## Troubleshooting

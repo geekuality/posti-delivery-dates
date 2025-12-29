@@ -25,10 +25,13 @@ _LOGGER = logging.getLogger(__name__)
 class PostiDeliveryCoordinator(DataUpdateCoordinator):
     """Class to manage fetching Posti delivery data."""
 
-    def __init__(self, hass: HomeAssistant, postal_code: str) -> None:
+    def __init__(
+        self, hass: HomeAssistant, postal_code: str, initial_data: dict | None = None
+    ) -> None:
         """Initialize the coordinator."""
         self.postal_code = postal_code
         self._first_update = True
+        self._skip_first_update = False
 
         super().__init__(
             hass,
@@ -37,9 +40,35 @@ class PostiDeliveryCoordinator(DataUpdateCoordinator):
             update_interval=DEFAULT_UPDATE_INTERVAL,
         )
 
+        # If initial data is provided, use it and skip first API fetch
+        if initial_data:
+            self.data = {
+                "delivery_dates": initial_data.get("delivery_dates", []),
+                "last_updated": datetime.fromisoformat(initial_data["last_updated"]),
+            }
+            self._skip_first_update = True
+            _LOGGER.debug(
+                "Initialized coordinator for %s with cached data from config flow",
+                postal_code,
+            )
+
     async def _async_update_data(self) -> dict:
         """Fetch data from Posti API."""
-        # Add initial random offset on first update
+        # If we have initial data from config flow, skip the first API fetch
+        if self._skip_first_update:
+            self._skip_first_update = False
+            self._first_update = False
+            # Schedule next update with offset
+            offset_seconds = random.randint(0, int(INITIAL_RANDOM_OFFSET_MAX.total_seconds()))
+            self.update_interval = DEFAULT_UPDATE_INTERVAL + timedelta(seconds=offset_seconds)
+            _LOGGER.debug(
+                "Skipping first API fetch for %s (using cached data), next update in %s",
+                self.postal_code,
+                self.update_interval,
+            )
+            return self.data
+
+        # Add initial random offset on first update (when no initial data was provided)
         if self._first_update:
             offset_seconds = random.randint(0, int(INITIAL_RANDOM_OFFSET_MAX.total_seconds()))
             _LOGGER.debug(

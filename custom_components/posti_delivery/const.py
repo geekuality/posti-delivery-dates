@@ -14,6 +14,7 @@ UPDATE_JITTER_MAX = timedelta(minutes=2)
 
 # Configuration
 CONF_POSTAL_CODE = "postal_code"
+CONF_INITIAL_DATA = "initial_data"
 
 # Sensor Attributes
 ATTR_ALL_DELIVERY_DATES = "all_delivery_dates"

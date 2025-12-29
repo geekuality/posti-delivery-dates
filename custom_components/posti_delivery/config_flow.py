@@ -1,6 +1,7 @@
 """Config flow for Posti Delivery Dates integration."""
 from __future__ import annotations
 
+from datetime import datetime
 import logging
 import re
 from typing import Any
@@ -13,7 +14,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
 
-from .const import API_TIMEOUT, API_URL, CONF_POSTAL_CODE, DOMAIN
+from .const import API_TIMEOUT, API_URL, CONF_INITIAL_DATA, CONF_POSTAL_CODE, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -60,6 +61,9 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
                 if not first_entry["deliveryDates"]:
                     raise NoData
 
+                # Store the fetched data to reuse it
+                delivery_dates = first_entry["deliveryDates"]
+
     except aiohttp.ClientError as err:
         _LOGGER.error("Error connecting to Posti API: %s", err)
         raise CannotConnect from err
@@ -67,7 +71,11 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         _LOGGER.exception("Unexpected error validating postal code: %s", err)
         raise UnknownError from err
 
-    return {"title": f"Posti {postal_code}", "postal_code": postal_code}
+    return {
+        "title": f"Posti {postal_code}",
+        "postal_code": postal_code,
+        "delivery_dates": delivery_dates,
+    }
 
 
 class PostiDeliveryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -99,7 +107,13 @@ class PostiDeliveryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
                 return self.async_create_entry(
                     title=info["title"],
-                    data={CONF_POSTAL_CODE: info["postal_code"]},
+                    data={
+                        CONF_POSTAL_CODE: info["postal_code"],
+                        CONF_INITIAL_DATA: {
+                            "delivery_dates": info["delivery_dates"],
+                            "last_updated": datetime.now().isoformat(),
+                        },
+                    },
                 )
 
         return self.async_show_form(
