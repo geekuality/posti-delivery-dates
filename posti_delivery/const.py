@@ -1,4 +1,5 @@
 """Constants for the Posti Delivery Dates integration."""
+
 from datetime import timedelta
 
 DOMAIN = "posti_delivery"

@@ -1,4 +1,5 @@
 """Config flow for Posti Delivery Dates integration."""
+
 from __future__ import annotations
 
 import logging
@@ -47,7 +48,9 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)) as response:
+            async with session.get(
+                url, timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
+            ) as response:
                 if response.status != 200:
                     raise CannotConnect
 
@@ -89,9 +92,7 @@ class PostiDeliveryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Handle the initial step."""
         errors: dict[str, str] = {}
 

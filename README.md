@@ -21,9 +21,10 @@ A custom Home Assistant integration for tracking Posti Finland mail delivery dat
 
 ### Manual Installation
 
-1. Create a `posti_delivery` directory in your Home Assistant's `custom_components` directory
-2. Copy all files from this repository (except `.github`, `LICENSE`, `README.md`) to `custom_components/posti_delivery/`
-3. Restart Home Assistant
+1. Download or clone this repository
+2. Copy the `posti_delivery` directory to your Home Assistant's `custom_components` directory
+3. Your final path should be: `config/custom_components/posti_delivery/`
+4. Restart Home Assistant
 
 ## Configuration
 
