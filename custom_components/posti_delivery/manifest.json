@@ -1,7 +1,7 @@
 {
-  "domain": "posti_delivery",
+  "domain": "posti_delivery_dates",
   "name": "Posti Delivery Dates",
-  "codeowners": [],
+  "codeowners": ["@geekuality"],
   "config_flow": true,
   "documentation": "https://github.com/geekuality/posti-delivery-dates",
   "integration_type": "service",
