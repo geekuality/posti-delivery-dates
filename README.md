@@ -5,7 +5,11 @@ A custom Home Assistant integration for tracking Posti Finland mail delivery dat
 > [!IMPORTANT]
 > While I (the author) have extensive programming background and have contributed some things to Home Assistant and other custom integrations, this is my first "complete" HA project. Be kind.
 >
-> This integration is not approved, supported or endorsed by Posti Group Oy in anyway, shape or form. I'm just using a publicly available API endpoint that was mentioned by another HA user.
+> *This integration is very new and still in testing phase, things might break or change significantly during early development. Frequent updates may occur.*
+
+> [!NOTE]
+> This integration is not approved, supported or endorsed by Posti Group Oy in anyway, shape or form. Integration uses a publicly available API endpoint that was mentioned by another HA user. The Posti logo is a trademark of Posti Group Oy. Its use in Home Assistant with this integration is purely informative and does not imply partnership or affiliation. 
+
 
 ## Features
 
