@@ -1,9 +1,9 @@
 """Config flow for Posti Delivery Dates integration."""
 from __future__ import annotations
 
-from datetime import datetime
 import logging
 import re
+from datetime import datetime
 from typing import Any
 
 import aiohttp
