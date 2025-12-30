@@ -1,4 +1,5 @@
 """Sensor platform for Posti Delivery Dates integration."""
+
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -78,8 +79,7 @@ class PostiDeliverySensor(CoordinatorEntity, SensorEntity):
         # Filter to get only future dates (today or later)
         today = date.today()
         future_dates = [
-            d for d in delivery_dates
-            if datetime.strptime(d, "%Y-%m-%d").date() >= today
+            d for d in delivery_dates if datetime.strptime(d, "%Y-%m-%d").date() >= today
         ]
 
         # Return the first future date, or None if all dates are in the past
@@ -109,13 +109,9 @@ class PostiDeliverySensor(CoordinatorEntity, SensorEntity):
 
         # Separate past and future dates
         future_dates = [
-            d for d in delivery_dates
-            if datetime.strptime(d, "%Y-%m-%d").date() >= today
+            d for d in delivery_dates if datetime.strptime(d, "%Y-%m-%d").date() >= today
         ]
-        past_dates = [
-            d for d in delivery_dates
-            if datetime.strptime(d, "%Y-%m-%d").date() < today
-        ]
+        past_dates = [d for d in delivery_dates if datetime.strptime(d, "%Y-%m-%d").date() < today]
 
         # Get next delivery (first future date)
         next_delivery = future_dates[0] if future_dates else None
