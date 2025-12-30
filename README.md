@@ -2,6 +2,11 @@
 
 A custom Home Assistant integration for tracking Posti Finland mail delivery dates by postal code.
 
+> [!IMPORTANT]
+> While I (the author) have extensive programming background and have contributed some things to Home Assistant and other custom integrations, this is my first "complete" HA project. Be kind.
+>
+> This integration is not approved, supported or endorsed by Posti Group Oy in anyway, shape or form. I'm just using a publicly available API endpoint that was mentioned by another HA user.
+
 ## Features
 
 - **UI Configuration**: Add postal codes through Home Assistant's UI
