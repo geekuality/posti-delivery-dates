@@ -20,8 +20,8 @@ jobs:
           echo "Release ${{ github.event.release.tag_name }} published"
           echo "Checking integration files..."
           test -f hacs.json
-          test -f custom_components/posti_delivery_dates_dates/manifest.json
-          test -f custom_components/posti_delivery_dates_dates/__init__.py
+          test -f custom_components/posti_delivery_dates/manifest.json
+          test -f custom_components/posti_delivery_dates/__init__.py
           echo "All required files present"
 
       - name: "Set version number"
