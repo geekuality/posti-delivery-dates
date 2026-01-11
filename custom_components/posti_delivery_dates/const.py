@@ -2,7 +2,7 @@
 
 from datetime import timedelta
 
-DOMAIN = "posti_delivery"
+DOMAIN = "posti_delivery_dates"
 
 # API Configuration
 API_URL = "https://www.posti.fi/maildelivery-api-proxy/?q={postal_code}"

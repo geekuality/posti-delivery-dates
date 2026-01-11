@@ -1,5 +1,5 @@
 {
-  "domain": "posti_delivery",
+  "domain": "posti_delivery_dates",
   "name": "Posti Delivery Dates",
   "codeowners": [],
   "config_flow": true,
