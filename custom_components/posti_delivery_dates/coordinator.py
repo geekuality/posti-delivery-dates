@@ -54,6 +54,37 @@ class PostiDeliveryCoordinator(DataUpdateCoordinator):
                 postal_code,
             )
 
+    def _check_last_delivery(self) -> str | None:
+        """Check if the previous next delivery has now passed."""
+        if not self.data:
+            return None
+
+        last_delivery_date = self.data.get("last_delivery_date")
+        prev_delivery_dates = self.data.get("delivery_dates", [])
+
+        if not prev_delivery_dates:
+            return last_delivery_date
+
+        today = date.today()
+        # Get previous next delivery (first future date from previous data)
+        prev_future_dates = [
+            d for d in prev_delivery_dates if datetime.strptime(d, "%Y-%m-%d").date() >= today
+        ]
+        prev_next_delivery = prev_future_dates[0] if prev_future_dates else None
+
+        # If previous next delivery is now in the past, it's our last delivery
+        if prev_next_delivery:
+            prev_delivery_date = datetime.strptime(prev_next_delivery, "%Y-%m-%d").date()
+            if prev_delivery_date < today:
+                _LOGGER.debug(
+                    "Delivery date %s has passed for postal code %s",
+                    prev_next_delivery,
+                    self.postal_code,
+                )
+                return prev_next_delivery
+
+        return last_delivery_date
+
     async def _async_update_data(self) -> dict:
         """Fetch data from Posti API."""
         # If we have initial data from config flow, skip the first API fetch
@@ -127,35 +158,7 @@ class PostiDeliveryCoordinator(DataUpdateCoordinator):
                     )
 
                     # Track last delivery date
-                    last_delivery_date = None
-                    if self.data:
-                        # Get the previous last_delivery_date
-                        last_delivery_date = self.data.get("last_delivery_date")
-
-                        # Check if the previous next delivery has now passed
-                        prev_delivery_dates = self.data.get("delivery_dates", [])
-                        if prev_delivery_dates:
-                            today = date.today()
-                            # Get previous next delivery (first future date from previous data)
-                            prev_future_dates = [
-                                d
-                                for d in prev_delivery_dates
-                                if datetime.strptime(d, "%Y-%m-%d").date() >= today
-                            ]
-                            prev_next_delivery = prev_future_dates[0] if prev_future_dates else None
-
-                            # If previous next delivery is now in the past, it's our last delivery
-                            if prev_next_delivery:
-                                prev_delivery_date = datetime.strptime(
-                                    prev_next_delivery, "%Y-%m-%d"
-                                ).date()
-                                if prev_delivery_date < today:
-                                    last_delivery_date = prev_next_delivery
-                                    _LOGGER.debug(
-                                        "Delivery date %s has passed for postal code %s",
-                                        prev_next_delivery,
-                                        self.postal_code,
-                                    )
+                    last_delivery_date = self._check_last_delivery()
 
                     return {
                         "delivery_dates": delivery_dates,
