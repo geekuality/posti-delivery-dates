@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from typing import Any
 
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
@@ -65,6 +67,28 @@ class PostiDeliverySensor(CoordinatorEntity, SensorEntity):
             model=MODEL,
             entry_type="service",
         )
+        self._remove_midnight_tracker = None
+
+    async def async_added_to_hass(self) -> None:
+        """Handle entity added to hass."""
+        await super().async_added_to_hass()
+
+        # Track midnight to update state when dates change
+        self._remove_midnight_tracker = async_track_time_change(
+            self.hass, self._handle_midnight, hour=0, minute=0, second=0
+        )
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Handle entity removal."""
+        if self._remove_midnight_tracker:
+            self._remove_midnight_tracker()
+        await super().async_will_remove_from_hass()
+
+    @callback
+    def _handle_midnight(self, now: datetime) -> None:
+        """Handle midnight time change to update sensor state."""
+        # Force state update at midnight since date filtering changes
+        self.async_write_ha_state()
 
     @property
     def native_value(self) -> str | None:
@@ -107,17 +131,16 @@ class PostiDeliverySensor(CoordinatorEntity, SensorEntity):
 
         today = date.today()
 
-        # Separate past and future dates
+        # Get future dates only
         future_dates = [
             d for d in delivery_dates if datetime.strptime(d, "%Y-%m-%d").date() >= today
         ]
-        past_dates = [d for d in delivery_dates if datetime.strptime(d, "%Y-%m-%d").date() < today]
 
         # Get next delivery (first future date)
         next_delivery = future_dates[0] if future_dates else None
 
-        # Get last scheduled date (most recent past date)
-        last_scheduled = past_dates[-1] if past_dates else None
+        # Get last scheduled date from coordinator (tracked when delivery passes)
+        last_scheduled = self.coordinator.data.get("last_delivery_date")
 
         # Calculate days until next delivery
         days_until_next = None

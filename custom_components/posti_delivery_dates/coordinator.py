@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import random
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 import aiohttp
 
@@ -46,6 +46,7 @@ class PostiDeliveryCoordinator(DataUpdateCoordinator):
             self.data = {
                 "delivery_dates": initial_data.get("delivery_dates", []),
                 "last_updated": datetime.fromisoformat(initial_data["last_updated"]),
+                "last_delivery_date": None,  # No deliveries have occurred yet
             }
             self._skip_first_update = True
             _LOGGER.debug(
@@ -125,9 +126,41 @@ class PostiDeliveryCoordinator(DataUpdateCoordinator):
                         self.postal_code,
                     )
 
+                    # Track last delivery date
+                    last_delivery_date = None
+                    if self.data:
+                        # Get the previous last_delivery_date
+                        last_delivery_date = self.data.get("last_delivery_date")
+
+                        # Check if the previous next delivery has now passed
+                        prev_delivery_dates = self.data.get("delivery_dates", [])
+                        if prev_delivery_dates:
+                            today = date.today()
+                            # Get previous next delivery (first future date from previous data)
+                            prev_future_dates = [
+                                d
+                                for d in prev_delivery_dates
+                                if datetime.strptime(d, "%Y-%m-%d").date() >= today
+                            ]
+                            prev_next_delivery = prev_future_dates[0] if prev_future_dates else None
+
+                            # If previous next delivery is now in the past, it's our last delivery
+                            if prev_next_delivery:
+                                prev_delivery_date = datetime.strptime(
+                                    prev_next_delivery, "%Y-%m-%d"
+                                ).date()
+                                if prev_delivery_date < today:
+                                    last_delivery_date = prev_next_delivery
+                                    _LOGGER.debug(
+                                        "Delivery date %s has passed for postal code %s",
+                                        prev_next_delivery,
+                                        self.postal_code,
+                                    )
+
                     return {
                         "delivery_dates": delivery_dates,
                         "last_updated": datetime.now(),
+                        "last_delivery_date": last_delivery_date,
                     }
 
         except aiohttp.ClientError as err:

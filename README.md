@@ -8,7 +8,7 @@ A custom Home Assistant integration for tracking Posti Finland mail delivery dat
 > *This integration is very new and still in testing phase, things might break or change significantly during early development. Frequent updates may occur.*
 
 > [!NOTE]
-> This integration is not approved, supported or endorsed by Posti Group Oy in anyway, shape or form. Integration uses a publicly available API endpoint that was mentioned by another HA user. The Posti logo is a trademark of Posti Group Oy. Its use in Home Assistant with this integration is purely informative and does not imply partnership or affiliation. 
+> This integration is not approved, supported or endorsed by Posti Group Oy in anyway, shape or form. Integration uses a publicly available API endpoint that was mentioned by another HA user. The Posti logo is a trademark of Posti Group Oy. Its use in Home Assistant with this integration is purely informative and does not imply partnership or affiliation.
 
 
 ## Features
@@ -31,8 +31,8 @@ A custom Home Assistant integration for tracking Posti Finland mail delivery dat
 ### Manual Installation
 
 1. Download or clone this repository
-2. Copy the `custom_components/posti_delivery` directory to your Home Assistant's `config/custom_components/` directory
-3. Your final path should be: `config/custom_components/posti_delivery/`
+2. Copy the `custom_components/custom_components/posti_delivery_dates` directory to your Home Assistant's `config/config/custom_components//` directory
+3. Your final path should be: `config/custom_components/posti_delivery_dates/`
 4. Restart Home Assistant
 
 ## Configuration
