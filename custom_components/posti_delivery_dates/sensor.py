@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import date, datetime
 
 from homeassistant.components.sensor import SensorEntity
@@ -26,6 +27,8 @@ from .const import (
     MODEL,
 )
 from .coordinator import PostiDeliveryCoordinator
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -67,6 +70,7 @@ class PostiDeliverySensor(CoordinatorEntity, SensorEntity):
             entry_type="service",
         )
         self._remove_midnight_tracker = None
+        self._previous_next_delivery = None  # Track previous next delivery for comparison
 
     async def async_added_to_hass(self) -> None:
         """Handle entity added to hass."""
@@ -138,8 +142,21 @@ class PostiDeliverySensor(CoordinatorEntity, SensorEntity):
         # Get next delivery (first future date)
         next_delivery = future_dates[0] if future_dates else None
 
-        # Get last scheduled date from coordinator (tracked when delivery passes)
+        # Check if previous next delivery has now passed
         last_scheduled = self.coordinator.data.get("last_delivery_date")
+        if self._previous_next_delivery:
+            prev_date = datetime.strptime(self._previous_next_delivery, "%Y-%m-%d").date()
+            if prev_date < today:
+                # Previous next delivery has passed, it becomes last scheduled
+                last_scheduled = self._previous_next_delivery
+                _LOGGER.debug(
+                    "Detected delivery %s has passed for postal code %s",
+                    self._previous_next_delivery,
+                    self._postal_code,
+                )
+
+        # Update previous next delivery for next comparison
+        self._previous_next_delivery = next_delivery
 
         # Calculate days until next delivery
         days_until_next = None
