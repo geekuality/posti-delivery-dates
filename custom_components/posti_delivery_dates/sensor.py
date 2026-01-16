@@ -71,6 +71,7 @@ class PostiDeliverySensor(CoordinatorEntity, SensorEntity):
         )
         self._remove_midnight_tracker = None
         self._previous_next_delivery = None  # Track previous next delivery for comparison
+        self._last_detected_delivery = None  # Store last delivery detected by sensor
 
     async def async_added_to_hass(self) -> None:
         """Handle entity added to hass."""
@@ -143,12 +144,11 @@ class PostiDeliverySensor(CoordinatorEntity, SensorEntity):
         next_delivery = future_dates[0] if future_dates else None
 
         # Check if previous next delivery has now passed
-        last_scheduled = self.coordinator.data.get("last_delivery_date")
         if self._previous_next_delivery:
             prev_date = datetime.strptime(self._previous_next_delivery, "%Y-%m-%d").date()
             if prev_date < today:
-                # Previous next delivery has passed, it becomes last scheduled
-                last_scheduled = self._previous_next_delivery
+                # Previous next delivery has passed, store it
+                self._last_detected_delivery = self._previous_next_delivery
                 _LOGGER.debug(
                     "Detected delivery %s has passed for postal code %s",
                     self._previous_next_delivery,
@@ -157,6 +157,12 @@ class PostiDeliverySensor(CoordinatorEntity, SensorEntity):
 
         # Update previous next delivery for next comparison
         self._previous_next_delivery = next_delivery
+
+        # Use sensor's detected last delivery (persists across coordinator updates)
+        # Fall back to coordinator's value if sensor hasn't detected any yet
+        last_scheduled = self._last_detected_delivery or self.coordinator.data.get(
+            "last_delivery_date"
+        )
 
         # Calculate days until next delivery
         days_until_next = None
