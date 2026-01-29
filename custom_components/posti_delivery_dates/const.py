@@ -10,8 +10,6 @@ API_TIMEOUT = 10
 
 # Update Configuration
 DEFAULT_UPDATE_INTERVAL = timedelta(hours=12)
-INITIAL_RANDOM_OFFSET_MAX = timedelta(minutes=30)
-UPDATE_JITTER_MAX = timedelta(minutes=2)
 
 # Configuration
 CONF_POSTAL_CODE = "postal_code"

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import random
 from datetime import date, datetime, timedelta
 
 import aiohttp
@@ -16,8 +15,6 @@ from .const import (
     API_URL,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
-    INITIAL_RANDOM_OFFSET_MAX,
-    UPDATE_JITTER_MAX,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -85,46 +82,53 @@ class PostiDeliveryCoordinator(DataUpdateCoordinator):
 
         return last_delivery_date
 
+    def _is_data_stale(self) -> bool:
+        """Check if cached data is stale (older than update interval)."""
+        if not self.data:
+            return True
+
+        last_updated = self.data.get("last_updated")
+        if not last_updated:
+            return True
+
+        # Data is stale if it's older than the update interval
+        age = datetime.now() - last_updated
+        is_stale = age > DEFAULT_UPDATE_INTERVAL
+
+        if is_stale:
+            _LOGGER.warning(
+                "Data for %s is stale (age: %s, threshold: %s). Forcing refresh.",
+                self.postal_code,
+                age,
+                DEFAULT_UPDATE_INTERVAL,
+            )
+
+        return is_stale
+
     async def _async_update_data(self) -> dict:
         """Fetch data from Posti API."""
+        # Check if data is stale and force refresh if needed
+        if self._is_data_stale() and not self._skip_first_update:
+            _LOGGER.info(
+                "Forcing API fetch for %s due to stale data",
+                self.postal_code,
+            )
+            # Continue to API fetch below
+
         # If we have initial data from config flow, skip the first API fetch
-        if self._skip_first_update:
+        elif self._skip_first_update:
             self._skip_first_update = False
             self._first_update = False
-            # Schedule next update with offset
-            offset_seconds = random.randint(0, int(INITIAL_RANDOM_OFFSET_MAX.total_seconds()))
-            self.update_interval = DEFAULT_UPDATE_INTERVAL + timedelta(seconds=offset_seconds)
             _LOGGER.debug(
-                "Skipping first API fetch for %s (using cached data), next update in %s",
+                "Skipping first API fetch for %s (using cached data)",
                 self.postal_code,
-                self.update_interval,
             )
             return self.data
 
-        # Add initial random offset on first update (when no initial data was provided)
+        # Log first update
         if self._first_update:
-            offset_seconds = random.randint(0, int(INITIAL_RANDOM_OFFSET_MAX.total_seconds()))
-            _LOGGER.debug(
-                "First update for %s, adding random offset of %d seconds",
-                self.postal_code,
-                offset_seconds,
-            )
+            _LOGGER.debug("First update for %s", self.postal_code)
             self._first_update = False
-            # Schedule next update with offset
-            self.update_interval = DEFAULT_UPDATE_INTERVAL + timedelta(seconds=offset_seconds)
-
-        # Add jitter to update interval (after first update)
-        else:
-            jitter_seconds = random.randint(
-                -int(UPDATE_JITTER_MAX.total_seconds()),
-                int(UPDATE_JITTER_MAX.total_seconds()),
-            )
-            self.update_interval = DEFAULT_UPDATE_INTERVAL + timedelta(seconds=jitter_seconds)
-            _LOGGER.debug(
-                "Adding jitter of %d seconds to update interval for %s",
-                jitter_seconds,
-                self.postal_code,
-            )
 
         url = API_URL.format(postal_code=self.postal_code)
 
