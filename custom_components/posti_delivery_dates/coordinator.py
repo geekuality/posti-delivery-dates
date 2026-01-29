@@ -52,6 +52,14 @@ class PostiDeliveryCoordinator(DataUpdateCoordinator):
                 postal_code,
             )
 
+            # Check if data is stale and set retry interval
+            if self._is_data_stale():
+                self.update_interval = RETRY_UPDATE_INTERVAL
+                self._skip_first_update = False
+                _LOGGER.info(
+                    "Initial data is stale, using retry interval for faster refresh"
+                )
+
     def _check_last_delivery(self) -> str | None:
         """Check if the previous next delivery has now passed."""
         if not self.data:
