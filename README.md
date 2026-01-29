@@ -24,14 +24,14 @@ A custom Home Assistant integration for tracking Posti Finland mail delivery dat
 
 ### HACS (Recommended)
 
-1. Add this repository as a custom repository in HACS
+1. Add this repository (`geekuality/posti-delivery-dates`) as a custom repository in HACS
 2. Install "Posti Delivery Dates" from HACS
 3. Restart Home Assistant
 
 ### Manual Installation
 
 1. Download or clone this repository
-2. Copy the `custom_components/custom_components/posti_delivery_dates` directory to your Home Assistant's `config/config/custom_components//` directory
+2. Copy the `custom_components/custom_components/posti_delivery_dates` directory to your Home Assistant's `config/config/custom_components/` directory
 3. Your final path should be: `config/custom_components/posti_delivery_dates/`
 4. Restart Home Assistant
 
