@@ -10,6 +10,7 @@ API_TIMEOUT = 10
 
 # Update Configuration
 DEFAULT_UPDATE_INTERVAL = timedelta(hours=12)
+RETRY_UPDATE_INTERVAL = timedelta(minutes=15)
 
 # Configuration
 CONF_POSTAL_CODE = "postal_code"

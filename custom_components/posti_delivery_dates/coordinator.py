@@ -15,6 +15,7 @@ from .const import (
     API_URL,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
+    RETRY_UPDATE_INTERVAL,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -164,6 +165,9 @@ class PostiDeliveryCoordinator(DataUpdateCoordinator):
                     # Track last delivery date
                     last_delivery_date = self._check_last_delivery()
 
+                    # Update successful, use normal interval
+                    self.update_interval = DEFAULT_UPDATE_INTERVAL
+
                     return {
                         "delivery_dates": delivery_dates,
                         "last_updated": datetime.now(),
@@ -171,6 +175,10 @@ class PostiDeliveryCoordinator(DataUpdateCoordinator):
                     }
 
         except aiohttp.ClientError as err:
+            # Update failed, retry more frequently
+            self.update_interval = RETRY_UPDATE_INTERVAL
             raise UpdateFailed(f"Error communicating with Posti API: {err}") from err
         except Exception as err:
+            # Update failed, retry more frequently
+            self.update_interval = RETRY_UPDATE_INTERVAL
             raise UpdateFailed(f"Unexpected error fetching Posti data: {err}") from err
