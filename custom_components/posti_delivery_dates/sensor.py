@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from datetime import date, datetime
 
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import RestoreEntity, SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -43,7 +43,7 @@ async def async_setup_entry(
     async_add_entities([PostiDeliverySensor(coordinator, postal_code, config_entry)])
 
 
-class PostiDeliverySensor(CoordinatorEntity, SensorEntity):
+class PostiDeliverySensor(CoordinatorEntity, RestoreEntity, SensorEntity):
     """Representation of a Posti Delivery sensor."""
 
     _attr_has_entity_name = True
@@ -71,10 +71,21 @@ class PostiDeliverySensor(CoordinatorEntity, SensorEntity):
         )
         self._remove_midnight_tracker = None
         self._previous_next_delivery = None  # Track previous next delivery for comparison
+        self._last_scheduled_date = None  # Persisted last scheduled date
 
     async def async_added_to_hass(self) -> None:
         """Handle entity added to hass."""
         await super().async_added_to_hass()
+
+        # Restore previous state to get last_scheduled_date
+        last_state = await self.async_get_last_state()
+        if last_state and last_state.attributes:
+            self._last_scheduled_date = last_state.attributes.get(ATTR_LAST_SCHEDULED_DATE)
+            _LOGGER.debug(
+                "Restored last_scheduled_date: %s for postal code %s",
+                self._last_scheduled_date,
+                self._postal_code,
+            )
 
         # Track midnight to update state when dates change
         self._remove_midnight_tracker = async_track_time_change(
@@ -143,12 +154,11 @@ class PostiDeliverySensor(CoordinatorEntity, SensorEntity):
         next_delivery = future_dates[0] if future_dates else None
 
         # Check if previous next delivery has now passed
-        last_scheduled = self.coordinator.data.get("last_delivery_date")
         if self._previous_next_delivery:
             prev_date = datetime.strptime(self._previous_next_delivery, "%Y-%m-%d").date()
             if prev_date < today:
                 # Previous next delivery has passed, it becomes last scheduled
-                last_scheduled = self._previous_next_delivery
+                self._last_scheduled_date = self._previous_next_delivery
                 _LOGGER.debug(
                     "Detected delivery %s has passed for postal code %s",
                     self._previous_next_delivery,
@@ -170,7 +180,7 @@ class PostiDeliverySensor(CoordinatorEntity, SensorEntity):
         return {
             ATTR_POSTAL_CODE: self._postal_code,
             ATTR_NEXT_SCHEDULED_DATE: next_delivery,
-            ATTR_LAST_SCHEDULED_DATE: last_scheduled,
+            ATTR_LAST_SCHEDULED_DATE: self._last_scheduled_date,
             ATTR_DAYS_UNTIL_NEXT: days_until_next,
             ATTR_DELIVERY_COUNT: len(delivery_dates),
             ATTR_ALL_DELIVERY_DATES: delivery_dates,
