@@ -29,6 +29,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
+    def _persist_coordinator_data() -> None:
+        if coordinator.last_update_success and coordinator.data:
+            hass.config_entries.async_update_entry(
+                entry,
+                data={
+                    **entry.data,
+                    CONF_INITIAL_DATA: {
+                        "delivery_dates": coordinator.data["delivery_dates"],
+                        "last_updated": coordinator.data["last_updated"].isoformat(),
+                    },
+                },
+            )
+
+    entry.async_on_unload(coordinator.async_add_listener(_persist_coordinator_data))
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True

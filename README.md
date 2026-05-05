@@ -2,20 +2,14 @@
 
 A custom Home Assistant integration for tracking Posti Finland mail delivery dates by postal code.
 
-> [!IMPORTANT]
-> While I (the author) have extensive programming background and have contributed some things to Home Assistant and other custom integrations, this is my first "complete" HA project. Be kind.
->
-> *This integration is very new and still in testing phase, things might break or change significantly during early development. Frequent updates may occur.*
-
 > [!NOTE]
-> This integration is not approved, supported or endorsed by Posti Group Oy in anyway, shape or form. Integration uses a publicly available API endpoint that was mentioned by another HA user. The Posti logo is a trademark of Posti Group Oy. Its use in Home Assistant with this integration is purely informative and does not imply partnership or affiliation.
-
+> This integration is not approved, supported or endorsed by Posti Group Oy in any way, shape or form. It uses a publicly available API endpoint. The Posti logo is a trademark of Posti Group Oy — its use within Home Assistant is purely informative and does not imply partnership or affiliation.
 
 ## Features
 
 - **UI Configuration**: Add postal codes through Home Assistant's UI
 - **Multiple Postal Codes**: Track delivery dates for multiple locations
-- **Automatic Updates**: Fetches delivery dates every 12 hours with intelligent jitter to spread API load
+- **Automatic Updates**: Fetches delivery dates every 12 hours
 - **Device per Postal Code**: Each postal code creates a device with a sensor entity
 - **Rich Attributes**: Access all delivery dates, next delivery, and days until delivery
 - **Offline Resilience**: Retains last known data when API is temporarily unavailable
@@ -24,14 +18,14 @@ A custom Home Assistant integration for tracking Posti Finland mail delivery dat
 
 ### HACS (Recommended)
 
-1. Add this repository (`geekuality/posti-delivery-dates`) as a custom repository in HACS
-2. Install "Posti Delivery Dates" from HACS
-3. Restart Home Assistant
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=geekuality&repository=posti-delivery-dates&category=Integration)
+
+Or add this repository (`geekuality/posti-delivery-dates`) as a custom repository in HACS, then install "Posti Delivery Dates" and restart Home Assistant.
 
 ### Manual Installation
 
 1. Download or clone this repository
-2. Copy the `custom_components/custom_components/posti_delivery_dates` directory to your Home Assistant's `config/config/custom_components/` directory
+2. Copy the `custom_components/posti_delivery_dates` directory to your Home Assistant's `config/custom_components/` directory
 3. Your final path should be: `config/custom_components/posti_delivery_dates/`
 4. Restart Home Assistant
 
@@ -58,10 +52,10 @@ The next **future** delivery date in ISO format (YYYY-MM-DD). Past dates are aut
 - `last_scheduled_date`: The most recent past delivery date (`null` if none or at initial setup)
 - `days_until_next`: Number of days until the next delivery
 - `delivery_count`: Total number of delivery dates returned by the API
-- `all_delivery_dates`: Complete list of all delivery dates from API (includes past dates)
+- `all_delivery_dates`: Complete list of all delivery dates from the API (includes past dates)
 - `last_updated`: Timestamp of last successful API fetch
 
-**Note:** The sensor automatically filters past dates from the state and `next_scheduled_date`, but preserves all dates (including past) in `all_delivery_dates` for reference.
+**Note:** The sensor automatically filters past dates from the state and `next_scheduled_date`, but preserves all dates in `all_delivery_dates` for reference.
 
 ## Example Usage
 
@@ -134,18 +128,8 @@ template:
 
 This integration uses Posti Finland's public delivery date API:
 - Endpoint: `https://www.posti.fi/maildelivery-api-proxy/?q=<postal_code>`
-- Update frequency: Every 12 hours with randomized jitter
+- Update frequency: Every 12 hours
 - No authentication required
-
-## Update Strategy
-
-The integration provides **instant sensor availability** by reusing data from the configuration validation step.
-
-To prevent API load spikes during regular updates, the integration implements:
-- **Instant first data**: Sensor shows data immediately using cached validation data
-- **Scheduled updates**: Next update occurs after 12 hours + random offset (0-30 minutes)
-- **Update jitter**: ±2 minute randomization on each subsequent update
-- This ensures multiple postal codes don't all update simultaneously
 
 ## Troubleshooting
 
@@ -156,8 +140,8 @@ To prevent API load spikes during regular updates, the integration implements:
 
 ### Sensor shows "Unavailable"
 - The integration retains last known data during temporary API outages
-- Check `last_updated` attribute to see when data was last refreshed
-- Sensor only becomes unavailable if no data has ever been fetched successfully
+- Check the `last_updated` attribute to see when data was last refreshed
+- The sensor only becomes unavailable if no data has ever been fetched successfully
 
 ### No delivery dates returned
 - Verify the postal code with Posti Finland's website
@@ -166,16 +150,8 @@ To prevent API load spikes during regular updates, the integration implements:
 ## Development
 
 ### Version Scheme
-This integration uses date-based versioning (YYYY.MM.PATCH) similar to Home Assistant core.
-
-### Contributing
-Contributions are welcome! Please open an issue or pull request on GitHub.
+This integration uses date-based versioning (`YYYY.M.MINOR`) similar to Home Assistant core.
 
 ## License
 
-This integration is provided as-is for personal use.
-
-## Acknowledgments
-
-- Data provided by Posti Finland
-- Built for Home Assistant
+MIT — see [LICENSE](LICENSE)

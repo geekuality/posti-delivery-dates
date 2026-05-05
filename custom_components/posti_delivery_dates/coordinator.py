@@ -54,10 +54,15 @@ class PostiDeliveryCoordinator(DataUpdateCoordinator):
 
             # Check if data is stale and set retry interval
             if self._is_data_stale():
+                last_updated = self.data.get("last_updated")
+                age = datetime.now() - last_updated if last_updated else None
                 self.update_interval = RETRY_UPDATE_INTERVAL
                 self._skip_first_update = False
-                _LOGGER.info(
-                    "Initial data is stale, using retry interval for faster refresh"
+                _LOGGER.warning(
+                    "Data for %s is stale (age: %s, threshold: %s). Forcing refresh.",
+                    postal_code,
+                    age,
+                    DEFAULT_UPDATE_INTERVAL,
                 )
 
     def _check_last_delivery(self) -> str | None:
@@ -100,19 +105,7 @@ class PostiDeliveryCoordinator(DataUpdateCoordinator):
         if not last_updated:
             return True
 
-        # Data is stale if it's older than the update interval
-        age = datetime.now() - last_updated
-        is_stale = age > DEFAULT_UPDATE_INTERVAL
-
-        if is_stale:
-            _LOGGER.warning(
-                "Data for %s is stale (age: %s, threshold: %s). Forcing refresh.",
-                self.postal_code,
-                age,
-                DEFAULT_UPDATE_INTERVAL,
-            )
-
-        return is_stale
+        return (datetime.now() - last_updated) > DEFAULT_UPDATE_INTERVAL
 
     async def _async_update_data(self) -> dict:
         """Fetch data from Posti API."""
