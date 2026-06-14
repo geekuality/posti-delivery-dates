@@ -17,8 +17,10 @@ from .const import (
     ATTR_ALL_DELIVERY_DATES,
     ATTR_DAYS_UNTIL_NEXT,
     ATTR_DELIVERY_COUNT,
+    ATTR_LAST_DELIVERY_WEEKDAY,
     ATTR_LAST_SCHEDULED_DATE,
     ATTR_LAST_UPDATED,
+    ATTR_NEXT_DELIVERY_WEEKDAY,
     ATTR_NEXT_SCHEDULED_DATE,
     ATTR_POSTAL_CODE,
     CONF_POSTAL_CODE,
@@ -138,7 +140,9 @@ class PostiDeliverySensor(CoordinatorEntity, RestoreEntity, SensorEntity):
                 ATTR_DELIVERY_COUNT: 0,
                 ATTR_ALL_DELIVERY_DATES: [],
                 ATTR_NEXT_SCHEDULED_DATE: None,
+                ATTR_NEXT_DELIVERY_WEEKDAY: None,
                 ATTR_LAST_SCHEDULED_DATE: None,
+                ATTR_LAST_DELIVERY_WEEKDAY: None,
                 ATTR_DAYS_UNTIL_NEXT: None,
                 ATTR_LAST_UPDATED: last_updated.isoformat() if last_updated else None,
             }
@@ -177,10 +181,21 @@ class PostiDeliverySensor(CoordinatorEntity, RestoreEntity, SensorEntity):
             except (ValueError, TypeError):
                 pass
 
+        next_weekday = (
+            datetime.strptime(next_delivery, "%Y-%m-%d").strftime("%A") if next_delivery else None
+        )
+        last_weekday = (
+            datetime.strptime(self._last_scheduled_date, "%Y-%m-%d").strftime("%A")
+            if self._last_scheduled_date
+            else None
+        )
+
         return {
             ATTR_POSTAL_CODE: self._postal_code,
             ATTR_NEXT_SCHEDULED_DATE: next_delivery,
+            ATTR_NEXT_DELIVERY_WEEKDAY: next_weekday,
             ATTR_LAST_SCHEDULED_DATE: self._last_scheduled_date,
+            ATTR_LAST_DELIVERY_WEEKDAY: last_weekday,
             ATTR_DAYS_UNTIL_NEXT: days_until_next,
             ATTR_DELIVERY_COUNT: len(delivery_dates),
             ATTR_ALL_DELIVERY_DATES: delivery_dates,
