@@ -49,7 +49,9 @@ The next **future** delivery date in ISO format (YYYY-MM-DD). Past dates are aut
 ### Attributes
 - `postal_code`: The postal code being tracked
 - `next_scheduled_date`: The next future delivery date (same as state, `null` if no future dates)
+- `next_delivery_weekday`: English weekday name of the next delivery (e.g. `"Monday"`, `null` if no future dates)
 - `last_scheduled_date`: The most recent past delivery date (`null` if none or at initial setup)
+- `last_delivery_weekday`: English weekday name of the last delivery (e.g. `"Friday"`, `null` if unknown)
 - `days_until_next`: Number of days until the next delivery
 - `delivery_count`: Total number of delivery dates returned by the API
 - `all_delivery_dates`: Complete list of all delivery dates from the API (includes past dates)
@@ -90,10 +92,10 @@ type: markdown
 content: |
   ## 📬 Mail Delivery Schedule
 
-  **Next:** {{ states('sensor.posti_00100_next_delivery') }}
+  **Next:** {{ state_attr('sensor.posti_00100_next_delivery', 'next_delivery_weekday') }} {{ states('sensor.posti_00100_next_delivery') }}
   **In {{ state_attr('sensor.posti_00100_next_delivery', 'days_until_next') }} days**
 
-  Last: {{ state_attr('sensor.posti_00100_next_delivery', 'last_scheduled_date') or 'N/A' }}
+  Last: {{ state_attr('sensor.posti_00100_next_delivery', 'last_delivery_weekday') }} {{ state_attr('sensor.posti_00100_next_delivery', 'last_scheduled_date') or 'N/A' }}
 ```
 
 ### Automation Example
