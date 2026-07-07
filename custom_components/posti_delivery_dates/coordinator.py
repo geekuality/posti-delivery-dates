@@ -46,7 +46,9 @@ class PostiDeliveryCoordinator(DataUpdateCoordinator):
         if initial_data:
             self.data = {
                 "delivery_dates": initial_data.get("delivery_dates", []),
-                "last_updated": datetime.fromisoformat(initial_data["last_updated"]),
+                "last_updated": dt_util.as_local(
+                    datetime.fromisoformat(initial_data["last_updated"])
+                ),
                 "last_delivery_date": initial_data.get("last_delivery_date"),
             }
             self._skip_first_update = True
