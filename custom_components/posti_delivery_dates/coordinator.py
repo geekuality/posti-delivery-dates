@@ -10,6 +10,7 @@ import aiohttp
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
 from .const import (
     API_TIMEOUT,
@@ -56,7 +57,7 @@ class PostiDeliveryCoordinator(DataUpdateCoordinator):
 
             if self._is_data_stale():
                 last_updated = self.data.get("last_updated")
-                age = datetime.now() - last_updated if last_updated else None
+                age = dt_util.now() - last_updated if last_updated else None
                 self.update_interval = RETRY_UPDATE_INTERVAL
                 self._skip_first_update = False
                 _LOGGER.warning(
@@ -126,7 +127,7 @@ class PostiDeliveryCoordinator(DataUpdateCoordinator):
         last_updated = self.data.get("last_updated")
         if not last_updated:
             return True
-        return (datetime.now() - last_updated) > DEFAULT_UPDATE_INTERVAL
+        return (dt_util.now() - last_updated) > DEFAULT_UPDATE_INTERVAL
 
     async def _async_update_data(self) -> dict:
         """Fetch data from Posti API."""
@@ -185,7 +186,7 @@ class PostiDeliveryCoordinator(DataUpdateCoordinator):
 
                     return {
                         "delivery_dates": delivery_dates,
-                        "last_updated": datetime.now(),
+                        "last_updated": dt_util.now(),
                         "last_delivery_date": last_delivery_date,
                     }
 
