@@ -23,8 +23,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     coordinator = PostiDeliveryCoordinator(hass, postal_code, initial_data)
 
-    # Fetch initial data (or use cached data from config flow)
     await coordinator.async_config_entry_first_refresh()
+    coordinator.setup()
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator
@@ -38,6 +38,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     CONF_INITIAL_DATA: {
                         "delivery_dates": coordinator.data["delivery_dates"],
                         "last_updated": coordinator.data["last_updated"].isoformat(),
+                        "last_delivery_date": coordinator.data.get("last_delivery_date"),
                     },
                 },
             )
@@ -51,7 +52,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
+    coordinator: PostiDeliveryCoordinator | None = hass.data[DOMAIN].get(entry.entry_id)
+
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+        if coordinator:
+            coordinator.shutdown()
         hass.data[DOMAIN].pop(entry.entry_id)
 
     return unload_ok

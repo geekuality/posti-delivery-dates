@@ -7,7 +7,8 @@ from datetime import date, datetime
 
 import aiohttp
 
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
@@ -31,6 +32,8 @@ class PostiDeliveryCoordinator(DataUpdateCoordinator):
         self.postal_code = postal_code
         self._first_update = True
         self._skip_first_update = False
+        self._tracked_next_delivery: str | None = None
+        self._remove_midnight_tracker = None
 
         super().__init__(
             hass,
@@ -39,12 +42,11 @@ class PostiDeliveryCoordinator(DataUpdateCoordinator):
             update_interval=DEFAULT_UPDATE_INTERVAL,
         )
 
-        # If initial data is provided, use it and skip first API fetch
         if initial_data:
             self.data = {
                 "delivery_dates": initial_data.get("delivery_dates", []),
                 "last_updated": datetime.fromisoformat(initial_data["last_updated"]),
-                "last_delivery_date": None,  # No deliveries have occurred yet
+                "last_delivery_date": initial_data.get("last_delivery_date"),
             }
             self._skip_first_update = True
             _LOGGER.debug(
@@ -52,7 +54,6 @@ class PostiDeliveryCoordinator(DataUpdateCoordinator):
                 postal_code,
             )
 
-            # Check if data is stale and set retry interval
             if self._is_data_stale():
                 last_updated = self.data.get("last_updated")
                 age = datetime.now() - last_updated if last_updated else None
@@ -65,59 +66,76 @@ class PostiDeliveryCoordinator(DataUpdateCoordinator):
                     DEFAULT_UPDATE_INTERVAL,
                 )
 
-    def _check_last_delivery(self) -> str | None:
-        """Check if the previous next delivery has now passed."""
+    def setup(self) -> None:
+        """Set up midnight tracking after initial data load."""
+        if self.data:
+            self._tracked_next_delivery = self._get_next_delivery()
+
+        self._remove_midnight_tracker = async_track_time_change(
+            self.hass, self._handle_midnight, hour=0, minute=0, second=0
+        )
+
+    def shutdown(self) -> None:
+        """Remove midnight tracker."""
+        if self._remove_midnight_tracker:
+            self._remove_midnight_tracker()
+
+    @callback
+    def _handle_midnight(self, now: datetime) -> None:
+        """Update state at midnight when dates roll over."""
+        if not self.data:
+            return
+        updated_last = self._update_last_delivery()
+        self.async_set_updated_data({**self.data, "last_delivery_date": updated_last})
+
+    def _get_next_delivery(self) -> str | None:
+        """Return first future delivery date from current data."""
         if not self.data:
             return None
-
-        last_delivery_date = self.data.get("last_delivery_date")
-        prev_delivery_dates = self.data.get("delivery_dates", [])
-
-        if not prev_delivery_dates:
-            return last_delivery_date
-
         today = date.today()
-        # Get previous next delivery (first future date from previous data)
-        prev_future_dates = [
-            d for d in prev_delivery_dates if datetime.strptime(d, "%Y-%m-%d").date() >= today
-        ]
-        prev_next_delivery = prev_future_dates[0] if prev_future_dates else None
+        return next(
+            (
+                d
+                for d in self.data.get("delivery_dates", [])
+                if datetime.strptime(d, "%Y-%m-%d").date() >= today
+            ),
+            None,
+        )
 
-        # If previous next delivery is now in the past, it's our last delivery
-        if prev_next_delivery:
-            prev_delivery_date = datetime.strptime(prev_next_delivery, "%Y-%m-%d").date()
-            if prev_delivery_date < today:
+    def _update_last_delivery(self) -> str | None:
+        """Check if tracked next delivery has passed; return updated last_delivery_date."""
+        current_last = self.data.get("last_delivery_date") if self.data else None
+
+        if self._tracked_next_delivery:
+            tracked_date = datetime.strptime(self._tracked_next_delivery, "%Y-%m-%d").date()
+            if tracked_date < date.today():
                 _LOGGER.debug(
-                    "Delivery date %s has passed for postal code %s",
-                    prev_next_delivery,
+                    "Delivery %s has passed for postal code %s",
+                    self._tracked_next_delivery,
                     self.postal_code,
                 )
-                return prev_next_delivery
+                current_last = self._tracked_next_delivery
 
-        return last_delivery_date
+        self._tracked_next_delivery = self._get_next_delivery()
+        return current_last
 
     def _is_data_stale(self) -> bool:
         """Check if cached data is stale (older than update interval)."""
         if not self.data:
             return True
-
         last_updated = self.data.get("last_updated")
         if not last_updated:
             return True
-
         return (datetime.now() - last_updated) > DEFAULT_UPDATE_INTERVAL
 
     async def _async_update_data(self) -> dict:
         """Fetch data from Posti API."""
-        # Check if data is stale and force refresh if needed
         if self._is_data_stale() and not self._skip_first_update:
             _LOGGER.info(
                 "Forcing API fetch for %s due to stale data",
                 self.postal_code,
             )
-            # Continue to API fetch below
 
-        # If we have initial data from config flow, skip the first API fetch
         elif self._skip_first_update:
             self._skip_first_update = False
             self._first_update = False
@@ -127,7 +145,6 @@ class PostiDeliveryCoordinator(DataUpdateCoordinator):
             )
             return self.data
 
-        # Log first update
         if self._first_update:
             _LOGGER.debug("First update for %s", self.postal_code)
             self._first_update = False
@@ -163,10 +180,7 @@ class PostiDeliveryCoordinator(DataUpdateCoordinator):
                         self.postal_code,
                     )
 
-                    # Track last delivery date
-                    last_delivery_date = self._check_last_delivery()
-
-                    # Update successful, use normal interval
+                    last_delivery_date = self._update_last_delivery()
                     self.update_interval = DEFAULT_UPDATE_INTERVAL
 
                     return {
@@ -176,10 +190,8 @@ class PostiDeliveryCoordinator(DataUpdateCoordinator):
                     }
 
         except aiohttp.ClientError as err:
-            # Update failed, retry more frequently
             self.update_interval = RETRY_UPDATE_INTERVAL
             raise UpdateFailed(f"Error communicating with Posti API: {err}") from err
         except Exception as err:
-            # Update failed, retry more frequently
             self.update_interval = RETRY_UPDATE_INTERVAL
             raise UpdateFailed(f"Unexpected error fetching Posti data: {err}") from err

@@ -5,21 +5,20 @@ from __future__ import annotations
 import logging
 from datetime import date, datetime
 
-from homeassistant.components.sensor import RestoreEntity, SensorEntity
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.const import UnitOfTime
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
     ATTR_ALL_DELIVERY_DATES,
-    ATTR_DAYS_UNTIL_NEXT,
     ATTR_DELIVERY_COUNT,
     ATTR_LAST_SCHEDULED_DATE,
     ATTR_LAST_SCHEDULED_WEEKDAY,
-    ATTR_LAST_UPDATED,
     ATTR_NEXT_SCHEDULED_DATE,
     ATTR_NEXT_SCHEDULED_WEEKDAY,
     ATTR_POSTAL_CODE,
@@ -38,173 +37,273 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up Posti Delivery sensor from a config entry."""
+    """Set up Posti Delivery sensors from a config entry."""
     coordinator: PostiDeliveryCoordinator = hass.data[DOMAIN][config_entry.entry_id]
     postal_code = config_entry.data[CONF_POSTAL_CODE]
 
-    async_add_entities([PostiDeliverySensor(coordinator, postal_code, config_entry)])
+    async_add_entities(
+        [
+            PostiNextDeliverySensor(coordinator, postal_code),
+            PostiDaysUntilNextSensor(coordinator, postal_code),
+            PostiLastDeliverySensor(coordinator, postal_code),
+            PostiDaysSinceLastSensor(coordinator, postal_code),
+            PostiAllDeliveryDatesSensor(coordinator, postal_code),
+            PostiLastUpdatedSensor(coordinator, postal_code),
+        ]
+    )
 
 
-class PostiDeliverySensor(CoordinatorEntity, RestoreEntity, SensorEntity):
-    """Representation of a Posti Delivery sensor."""
+def _device_info(postal_code: str) -> DeviceInfo:
+    return DeviceInfo(
+        identifiers={(DOMAIN, postal_code)},
+        name=f"Posti {postal_code}",
+        manufacturer=MANUFACTURER,
+        model=MODEL,
+        entry_type="service",
+    )
+
+
+class PostiNextDeliverySensor(CoordinatorEntity, SensorEntity):
+    """Next scheduled delivery date."""
 
     _attr_has_entity_name = True
     _attr_name = "Next Delivery"
     _attr_icon = "mdi:mailbox"
+    _attr_device_class = SensorDeviceClass.DATE
 
-    def __init__(
-        self,
-        coordinator: PostiDeliveryCoordinator,
-        postal_code: str,
-        config_entry: ConfigEntry,
-    ) -> None:
+    def __init__(self, coordinator: PostiDeliveryCoordinator, postal_code: str) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._postal_code = postal_code
         self._attr_unique_id = f"{DOMAIN}_{postal_code}"
-
-        # Device info - creates a device for this postal code
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, postal_code)},
-            name=f"Posti {postal_code}",
-            manufacturer=MANUFACTURER,
-            model=MODEL,
-            entry_type="service",
-        )
-        self._remove_midnight_tracker = None
-        self._previous_next_delivery = None  # Track previous next delivery for comparison
-        self._last_scheduled_date = None  # Persisted last scheduled date
-
-    async def async_added_to_hass(self) -> None:
-        """Handle entity added to hass."""
-        await super().async_added_to_hass()
-
-        # Restore previous state to get last_scheduled_date
-        last_state = await self.async_get_last_state()
-        if last_state and last_state.attributes:
-            self._last_scheduled_date = last_state.attributes.get(ATTR_LAST_SCHEDULED_DATE)
-            _LOGGER.debug(
-                "Restored last_scheduled_date: %s for postal code %s",
-                self._last_scheduled_date,
-                self._postal_code,
-            )
-
-        # Track midnight to update state when dates change
-        self._remove_midnight_tracker = async_track_time_change(
-            self.hass, self._handle_midnight, hour=0, minute=0, second=0
-        )
-
-    async def async_will_remove_from_hass(self) -> None:
-        """Handle entity removal."""
-        if self._remove_midnight_tracker:
-            self._remove_midnight_tracker()
-        await super().async_will_remove_from_hass()
-
-    @callback
-    def _handle_midnight(self, now: datetime) -> None:
-        """Handle midnight time change to update sensor state."""
-        # Force state update at midnight since date filtering changes
-        self.async_write_ha_state()
+        self._attr_device_info = _device_info(postal_code)
 
     @property
-    def native_value(self) -> str | None:
-        """Return the state of the sensor (next future delivery date)."""
+    def native_value(self) -> date | None:
+        """Return next future delivery date."""
         if not self.coordinator.data:
             return None
-
-        delivery_dates = self.coordinator.data.get("delivery_dates", [])
-        if not delivery_dates:
-            return None
-
-        # Filter to get only future dates (today or later)
         today = date.today()
-        future_dates = [
-            d for d in delivery_dates if datetime.strptime(d, "%Y-%m-%d").date() >= today
-        ]
-
-        # Return the first future date, or None if all dates are in the past
-        return future_dates[0] if future_dates else None
+        return next(
+            (
+                datetime.strptime(d, "%Y-%m-%d").date()
+                for d in self.coordinator.data.get("delivery_dates", [])
+                if datetime.strptime(d, "%Y-%m-%d").date() >= today
+            ),
+            None,
+        )
 
     @property
-    def extra_state_attributes(self) -> dict[str, any]:
-        """Return the state attributes."""
+    def extra_state_attributes(self) -> dict:
+        """Return next delivery attributes."""
         if not self.coordinator.data:
             return {}
 
-        delivery_dates = self.coordinator.data.get("delivery_dates", [])
-        last_updated = self.coordinator.data.get("last_updated")
-
-        if not delivery_dates:
-            return {
-                ATTR_POSTAL_CODE: self._postal_code,
-                ATTR_DELIVERY_COUNT: 0,
-                ATTR_ALL_DELIVERY_DATES: [],
-                ATTR_NEXT_SCHEDULED_DATE: None,
-                ATTR_NEXT_SCHEDULED_WEEKDAY: None,
-                ATTR_LAST_SCHEDULED_DATE: None,
-                ATTR_LAST_SCHEDULED_WEEKDAY: None,
-                ATTR_DAYS_UNTIL_NEXT: None,
-                ATTR_LAST_UPDATED: last_updated.isoformat() if last_updated else None,
-            }
-
         today = date.today()
-
-        # Get future dates only
-        future_dates = [
-            d for d in delivery_dates if datetime.strptime(d, "%Y-%m-%d").date() >= today
-        ]
-
-        # Get next delivery (first future date)
-        next_delivery = future_dates[0] if future_dates else None
-
-        # Check if previous next delivery has now passed
-        if self._previous_next_delivery:
-            prev_date = datetime.strptime(self._previous_next_delivery, "%Y-%m-%d").date()
-            if prev_date < today:
-                # Previous next delivery has passed, it becomes last scheduled
-                self._last_scheduled_date = self._previous_next_delivery
-                _LOGGER.debug(
-                    "Detected delivery %s has passed for postal code %s",
-                    self._previous_next_delivery,
-                    self._postal_code,
-                )
-
-        # Update previous next delivery for next comparison
-        self._previous_next_delivery = next_delivery
-
-        # Calculate days until next delivery
-        days_until_next = None
-        if next_delivery:
-            try:
-                next_date = datetime.strptime(next_delivery, "%Y-%m-%d").date()
-                days_until_next = (next_date - today).days
-            except (ValueError, TypeError):
-                pass
-
-        next_weekday = (
-            datetime.strptime(next_delivery, "%Y-%m-%d").strftime("%A") if next_delivery else None
-        )
-        last_weekday = (
-            datetime.strptime(self._last_scheduled_date, "%Y-%m-%d").strftime("%A")
-            if self._last_scheduled_date
-            else None
+        next_delivery_str = next(
+            (
+                d
+                for d in self.coordinator.data.get("delivery_dates", [])
+                if datetime.strptime(d, "%Y-%m-%d").date() >= today
+            ),
+            None,
         )
 
         return {
             ATTR_POSTAL_CODE: self._postal_code,
-            ATTR_NEXT_SCHEDULED_DATE: next_delivery,
-            ATTR_NEXT_SCHEDULED_WEEKDAY: next_weekday,
-            ATTR_LAST_SCHEDULED_DATE: self._last_scheduled_date,
-            ATTR_LAST_SCHEDULED_WEEKDAY: last_weekday,
-            ATTR_DAYS_UNTIL_NEXT: days_until_next,
-            ATTR_DELIVERY_COUNT: len(delivery_dates),
-            ATTR_ALL_DELIVERY_DATES: delivery_dates,
-            ATTR_LAST_UPDATED: last_updated.isoformat() if last_updated else None,
+            ATTR_NEXT_SCHEDULED_DATE: next_delivery_str,
+            ATTR_NEXT_SCHEDULED_WEEKDAY: (
+                datetime.strptime(next_delivery_str, "%Y-%m-%d").strftime("%A")
+                if next_delivery_str
+                else None
+            ),
         }
 
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        # Entity is available if we have data (even if it's old)
-        # or if the coordinator is available (first successful fetch)
+        return self.coordinator.last_update_success or self.coordinator.data is not None
+
+
+class PostiDaysUntilNextSensor(CoordinatorEntity, SensorEntity):
+    """Days remaining until next scheduled delivery."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Days Until Next Delivery"
+    _attr_icon = "mdi:calendar-arrow-right"
+    _attr_native_unit_of_measurement = UnitOfTime.DAYS
+
+    def __init__(self, coordinator: PostiDeliveryCoordinator, postal_code: str) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self._postal_code = postal_code
+        self._attr_unique_id = f"{DOMAIN}_{postal_code}_days_until_next"
+        self._attr_device_info = _device_info(postal_code)
+
+    @property
+    def native_value(self) -> int | None:
+        """Return days until next delivery."""
+        if not self.coordinator.data:
+            return None
+        today = date.today()
+        next_str = next(
+            (
+                d
+                for d in self.coordinator.data.get("delivery_dates", [])
+                if datetime.strptime(d, "%Y-%m-%d").date() >= today
+            ),
+            None,
+        )
+        if not next_str:
+            return None
+        return (datetime.strptime(next_str, "%Y-%m-%d").date() - today).days
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return self.coordinator.last_update_success or self.coordinator.data is not None
+
+
+class PostiLastDeliverySensor(CoordinatorEntity, SensorEntity):
+    """Most recent past delivery date."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Last Delivery"
+    _attr_icon = "mdi:mailbox-open"
+    _attr_device_class = SensorDeviceClass.DATE
+
+    def __init__(self, coordinator: PostiDeliveryCoordinator, postal_code: str) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self._postal_code = postal_code
+        self._attr_unique_id = f"{DOMAIN}_{postal_code}_last_delivery"
+        self._attr_device_info = _device_info(postal_code)
+
+    @property
+    def native_value(self) -> date | None:
+        """Return last delivery date."""
+        if not self.coordinator.data:
+            return None
+        last = self.coordinator.data.get("last_delivery_date")
+        if not last:
+            return None
+        return datetime.strptime(last, "%Y-%m-%d").date()
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return last delivery attributes."""
+        if not self.coordinator.data:
+            return {}
+
+        last = self.coordinator.data.get("last_delivery_date")
+        attrs: dict = {ATTR_POSTAL_CODE: self._postal_code}
+
+        if last:
+            attrs[ATTR_LAST_SCHEDULED_DATE] = last
+            attrs[ATTR_LAST_SCHEDULED_WEEKDAY] = datetime.strptime(last, "%Y-%m-%d").strftime("%A")
+
+        return attrs
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return self.coordinator.last_update_success or self.coordinator.data is not None
+
+
+class PostiDaysSinceLastSensor(CoordinatorEntity, SensorEntity):
+    """Days elapsed since last scheduled delivery."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Days Since Last Delivery"
+    _attr_icon = "mdi:calendar-arrow-left"
+    _attr_native_unit_of_measurement = UnitOfTime.DAYS
+
+    def __init__(self, coordinator: PostiDeliveryCoordinator, postal_code: str) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self._postal_code = postal_code
+        self._attr_unique_id = f"{DOMAIN}_{postal_code}_days_since_last"
+        self._attr_device_info = _device_info(postal_code)
+
+    @property
+    def native_value(self) -> int | None:
+        """Return days since last delivery."""
+        if not self.coordinator.data:
+            return None
+        last = self.coordinator.data.get("last_delivery_date")
+        if not last:
+            return None
+        return (date.today() - datetime.strptime(last, "%Y-%m-%d").date()).days
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return self.coordinator.last_update_success or self.coordinator.data is not None
+
+
+class PostiAllDeliveryDatesSensor(CoordinatorEntity, SensorEntity):
+    """Count of all scheduled delivery dates with full list as attribute."""
+
+    _attr_has_entity_name = True
+    _attr_name = "All Delivery Dates"
+    _attr_icon = "mdi:calendar-multiselect"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: PostiDeliveryCoordinator, postal_code: str) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self._postal_code = postal_code
+        self._attr_unique_id = f"{DOMAIN}_{postal_code}_all_dates"
+        self._attr_device_info = _device_info(postal_code)
+
+    @property
+    def native_value(self) -> int | None:
+        """Return total count of delivery dates."""
+        if not self.coordinator.data:
+            return None
+        return len(self.coordinator.data.get("delivery_dates", []))
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return full list of delivery dates."""
+        if not self.coordinator.data:
+            return {}
+        delivery_dates = self.coordinator.data.get("delivery_dates", [])
+        return {
+            ATTR_DELIVERY_COUNT: len(delivery_dates),
+            ATTR_ALL_DELIVERY_DATES: delivery_dates,
+        }
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return self.coordinator.last_update_success or self.coordinator.data is not None
+
+
+class PostiLastUpdatedSensor(CoordinatorEntity, SensorEntity):
+    """Timestamp of last successful data fetch — diagnostic."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Last Updated"
+    _attr_icon = "mdi:clock-outline"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: PostiDeliveryCoordinator, postal_code: str) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self._postal_code = postal_code
+        self._attr_unique_id = f"{DOMAIN}_{postal_code}_last_updated"
+        self._attr_device_info = _device_info(postal_code)
+
+    @property
+    def native_value(self) -> datetime | None:
+        """Return timestamp of last data fetch."""
+        if not self.coordinator.data:
+            return None
+        return self.coordinator.data.get("last_updated")
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
         return self.coordinator.last_update_success or self.coordinator.data is not None

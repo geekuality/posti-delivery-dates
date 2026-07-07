@@ -10,8 +10,7 @@ A custom Home Assistant integration for tracking Posti Finland mail delivery dat
 - **UI Configuration**: Add postal codes through Home Assistant's UI
 - **Multiple Postal Codes**: Track delivery dates for multiple locations
 - **Automatic Updates**: Fetches delivery dates every 12 hours
-- **Device per Postal Code**: Each postal code creates a device with a sensor entity
-- **Rich Attributes**: Access all delivery dates, next delivery, and days until delivery
+- **Device per Postal Code**: Each postal code creates a device with six sensor entities
 - **Offline Resilience**: Retains last known data when API is temporarily unavailable
 
 ## Installation
@@ -39,29 +38,54 @@ Or add this repository (`geekuality/posti-delivery-dates`) as a custom repositor
 
 To add multiple postal codes, repeat the process.
 
-## Sensor Data
+## Sensors
 
-Each postal code creates a sensor with the following:
+Each postal code creates six sensors.
 
-### State
-The next **future** delivery date in ISO format (YYYY-MM-DD). Past dates are automatically filtered out.
+### Next Delivery (`sensor.posti_XXXXX_next_delivery`)
 
-### Attributes
-- `postal_code`: The postal code being tracked
-- `next_scheduled_date`: The next future delivery date (same as state, `null` if no future dates)
-- `next_scheduled_weekday`: English weekday name of the next delivery (e.g. `"Monday"`, `null` if no future dates)
-- `last_scheduled_date`: The most recent past delivery date (`null` if none or at initial setup)
-- `last_scheduled_weekday`: English weekday name of the last delivery (e.g. `"Friday"`, `null` if unknown)
-- `days_until_next`: Number of days until the next delivery
-- `delivery_count`: Total number of delivery dates returned by the API
-- `all_delivery_dates`: Complete list of all delivery dates from the API (includes past dates)
-- `last_updated`: Timestamp of last successful API fetch
+State: next future delivery date (`device_class: date`).
 
-**Note:** The sensor automatically filters past dates from the state and `next_scheduled_date`, but preserves all dates in `all_delivery_dates` for reference.
+| Attribute | Description |
+|---|---|
+| `postal_code` | Postal code being tracked |
+| `next_scheduled_date` | Next future delivery date (ISO format) |
+| `next_scheduled_weekday` | Weekday name, e.g. `"Monday"` |
+
+### Days Until Next Delivery (`sensor.posti_XXXXX_days_until_next_delivery`)
+
+State: integer count of days until the next delivery, in days.
+
+### Last Delivery (`sensor.posti_XXXXX_last_delivery`)
+
+State: most recent past delivery date (`device_class: date`). `null` until the first delivery is detected after installation.
+
+| Attribute | Description |
+|---|---|
+| `postal_code` | Postal code being tracked |
+| `last_scheduled_date` | Last delivery date (ISO format) |
+| `last_scheduled_weekday` | Weekday name, e.g. `"Friday"` |
+
+### Days Since Last Delivery (`sensor.posti_XXXXX_days_since_last_delivery`)
+
+State: integer count of days elapsed since the last delivery, in days.
+
+### All Delivery Dates (`sensor.posti_XXXXX_all_delivery_dates`) — diagnostic
+
+State: total count of dates returned by the API.
+
+| Attribute | Description |
+|---|---|
+| `delivery_count` | Same as state |
+| `all_delivery_dates` | Full list of all delivery dates from the API (includes past dates) |
+
+### Last Updated (`sensor.posti_XXXXX_last_updated`) — diagnostic
+
+State: timestamp of the last successful API fetch (`device_class: timestamp`).
 
 ## Example Usage
 
-### Display in Dashboard
+### Dashboard
 
 Simple entity card:
 ```yaml
@@ -69,33 +93,30 @@ type: entity
 entity: sensor.posti_00100_next_delivery
 ```
 
-Entities card with custom formatting:
+Entities card:
 ```yaml
 type: entities
 entities:
   - entity: sensor.posti_00100_next_delivery
     name: Next Delivery
-  - type: attribute
-    entity: sensor.posti_00100_next_delivery
-    attribute: days_until_next
+  - entity: sensor.posti_00100_days_until_next_delivery
     name: Days Until
-    suffix: days
-  - type: attribute
-    entity: sensor.posti_00100_next_delivery
-    attribute: last_scheduled_date
+  - entity: sensor.posti_00100_last_delivery
     name: Last Delivery
+  - entity: sensor.posti_00100_days_since_last_delivery
+    name: Days Since
 ```
 
-Markdown card showing multiple attributes:
+Markdown card:
 ```yaml
 type: markdown
 content: |
   ## 📬 Mail Delivery Schedule
 
   **Next:** {{ state_attr('sensor.posti_00100_next_delivery', 'next_scheduled_weekday') }} {{ states('sensor.posti_00100_next_delivery') }}
-  **In {{ state_attr('sensor.posti_00100_next_delivery', 'days_until_next') }} days**
+  **In {{ states('sensor.posti_00100_days_until_next_delivery') }} days**
 
-  Last: {{ state_attr('sensor.posti_00100_next_delivery', 'last_scheduled_weekday') }} {{ state_attr('sensor.posti_00100_next_delivery', 'last_scheduled_date') or 'N/A' }}
+  Last: {{ state_attr('sensor.posti_00100_last_delivery', 'last_scheduled_weekday') }} {{ states('sensor.posti_00100_last_delivery') or 'N/A' }}
 ```
 
 ### Automation Example
@@ -107,23 +128,13 @@ automation:
       - platform: time
         at: "08:00:00"
     condition:
-      - condition: template
-        value_template: "{{ state_attr('sensor.posti_00100_next_delivery', 'days_until_next') == 0 }}"
+      - condition: numeric_state
+        entity_id: sensor.posti_00100_days_until_next_delivery
+        below: 1
     action:
       - service: notify.mobile_app
         data:
           message: "Mail delivery today!"
-```
-
-### Template Sensor for All Dates
-
-```yaml
-template:
-  - sensor:
-      - name: "All Delivery Dates"
-        state: "{{ state_attr('sensor.posti_00100_next_delivery', 'delivery_count') }}"
-        attributes:
-          dates: "{{ state_attr('sensor.posti_00100_next_delivery', 'all_delivery_dates') }}"
 ```
 
 ## API Information
@@ -142,7 +153,7 @@ This integration uses Posti Finland's public delivery date API:
 
 ### Sensor shows "Unavailable"
 - The integration retains last known data during temporary API outages
-- Check the `last_updated` attribute to see when data was last refreshed
+- Check the Last Updated sensor to see when data was last refreshed
 - The sensor only becomes unavailable if no data has ever been fetched successfully
 
 ### No delivery dates returned
