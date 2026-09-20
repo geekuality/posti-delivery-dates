@@ -52,7 +52,7 @@ State: next future delivery date (`device_class: date`).
 | `next_scheduled_date` | Next future delivery date (ISO format) |
 | `next_scheduled_weekday` | Weekday name, e.g. `"Monday"` |
 | `next_scheduled_relative_weekday` | `"Yesterday"`, `"Today"`, `"Tomorrow"`, or the weekday name if further away |
-| `next_delivery_relative_time` | `"In N days"`, `"N days ago"`, or `null` if today |
+| `next_delivery_relative_time` | `"In N days"`, `"N days ago"`, or empty string if today |
 
 ### Days Until Next Delivery (`sensor.posti_XXXXX_days_until_next_delivery`)
 
@@ -60,7 +60,7 @@ State: integer count of days until the next delivery, in days.
 
 | Attribute | Description |
 |---|---|
-| `next_delivery_relative_time` | `"In N days"`, `"N days ago"`, or `null` if today |
+| `next_delivery_relative_time` | `"In N days"`, `"N days ago"`, or empty string if today |
 
 ### Last Delivery (`sensor.posti_XXXXX_last_delivery`)
 
@@ -72,7 +72,7 @@ State: most recent past delivery date (`device_class: date`). `null` until the f
 | `last_scheduled_date` | Last delivery date (ISO format) |
 | `last_scheduled_weekday` | Weekday name, e.g. `"Friday"` |
 | `last_scheduled_relative_weekday` | `"Yesterday"`, `"Today"`, `"Tomorrow"`, or the weekday name if further away |
-| `last_delivery_relative_time` | `"In N days"`, `"N days ago"`, or `null` if today |
+| `last_delivery_relative_time` | `"In N days"`, `"N days ago"`, or empty string if today |
 
 ### Days Since Last Delivery (`sensor.posti_XXXXX_days_since_last_delivery`)
 
@@ -80,7 +80,7 @@ State: integer count of days elapsed since the last delivery, in days.
 
 | Attribute | Description |
 |---|---|
-| `last_delivery_relative_time` | `"In N days"`, `"N days ago"`, or `null` if today |
+| `last_delivery_relative_time` | `"In N days"`, `"N days ago"`, or empty string if today |
 
 ### All Delivery Dates (`sensor.posti_XXXXX_all_delivery_dates`) — diagnostic
 

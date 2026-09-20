@@ -69,10 +69,10 @@ def _relative_weekday(target: date, today: date) -> str:
     return target.strftime("%A")
 
 
-def _relative_days_description(days: int) -> str | None:
-    """Return "In N day(s)" / "N day(s) ago", or None for today."""
+def _relative_days_description(days: int) -> str:
+    """Return "In N day(s)" / "N day(s) ago", or "" for today."""
     if days == 0:
-        return None
+        return ""
     unit = "day" if abs(days) == 1 else "days"
     if days > 0:
         return f"In {days} {unit}"
