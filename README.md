@@ -51,6 +51,7 @@ State: next future delivery date (`device_class: date`).
 | `postal_code` | Postal code being tracked |
 | `next_scheduled_date` | Next future delivery date (ISO format) |
 | `next_scheduled_weekday` | Weekday name, e.g. `"Monday"` |
+| `next_scheduled_relative_weekday` | `"Yesterday"`, `"Today"`, `"Tomorrow"`, or the weekday name if further away |
 
 ### Days Until Next Delivery (`sensor.posti_XXXXX_days_until_next_delivery`)
 
@@ -65,6 +66,7 @@ State: most recent past delivery date (`device_class: date`). `null` until the f
 | `postal_code` | Postal code being tracked |
 | `last_scheduled_date` | Last delivery date (ISO format) |
 | `last_scheduled_weekday` | Weekday name, e.g. `"Friday"` |
+| `last_scheduled_relative_weekday` | `"Yesterday"`, `"Today"`, `"Tomorrow"`, or the weekday name if further away |
 
 ### Days Since Last Delivery (`sensor.posti_XXXXX_days_since_last_delivery`)
 

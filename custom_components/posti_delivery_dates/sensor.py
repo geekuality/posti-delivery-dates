@@ -18,8 +18,10 @@ from .const import (
     ATTR_ALL_DELIVERY_DATES,
     ATTR_DELIVERY_COUNT,
     ATTR_LAST_SCHEDULED_DATE,
+    ATTR_LAST_SCHEDULED_RELATIVE_WEEKDAY,
     ATTR_LAST_SCHEDULED_WEEKDAY,
     ATTR_NEXT_SCHEDULED_DATE,
+    ATTR_NEXT_SCHEDULED_RELATIVE_WEEKDAY,
     ATTR_NEXT_SCHEDULED_WEEKDAY,
     ATTR_POSTAL_CODE,
     CONF_POSTAL_CODE,
@@ -51,6 +53,18 @@ async def async_setup_entry(
             PostiLastUpdatedSensor(coordinator, postal_code),
         ]
     )
+
+
+def _relative_weekday(target: date, today: date) -> str:
+    """Return Yesterday/Today/Tomorrow, else weekday name."""
+    offset = (target - today).days
+    if offset == -1:
+        return "Yesterday"
+    if offset == 0:
+        return "Today"
+    if offset == 1:
+        return "Tomorrow"
+    return target.strftime("%A")
 
 
 def _device_info(postal_code: str) -> DeviceInfo:
@@ -109,13 +123,18 @@ class PostiNextDeliverySensor(CoordinatorEntity, SensorEntity):
             None,
         )
 
+        next_delivery_date = (
+            datetime.strptime(next_delivery_str, "%Y-%m-%d").date() if next_delivery_str else None
+        )
+
         return {
             ATTR_POSTAL_CODE: self._postal_code,
             ATTR_NEXT_SCHEDULED_DATE: next_delivery_str,
             ATTR_NEXT_SCHEDULED_WEEKDAY: (
-                datetime.strptime(next_delivery_str, "%Y-%m-%d").strftime("%A")
-                if next_delivery_str
-                else None
+                next_delivery_date.strftime("%A") if next_delivery_date else None
+            ),
+            ATTR_NEXT_SCHEDULED_RELATIVE_WEEKDAY: (
+                _relative_weekday(next_delivery_date, today) if next_delivery_date else None
             ),
         }
 
@@ -199,8 +218,10 @@ class PostiLastDeliverySensor(CoordinatorEntity, SensorEntity):
         attrs: dict = {ATTR_POSTAL_CODE: self._postal_code}
 
         if last:
+            last_date = datetime.strptime(last, "%Y-%m-%d").date()
             attrs[ATTR_LAST_SCHEDULED_DATE] = last
-            attrs[ATTR_LAST_SCHEDULED_WEEKDAY] = datetime.strptime(last, "%Y-%m-%d").strftime("%A")
+            attrs[ATTR_LAST_SCHEDULED_WEEKDAY] = last_date.strftime("%A")
+            attrs[ATTR_LAST_SCHEDULED_RELATIVE_WEEKDAY] = _relative_weekday(last_date, date.today())
 
         return attrs
 
