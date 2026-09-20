@@ -17,9 +17,11 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import (
     ATTR_ALL_DELIVERY_DATES,
     ATTR_DELIVERY_COUNT,
+    ATTR_LAST_DELIVERY_RELATIVE_TIME,
     ATTR_LAST_SCHEDULED_DATE,
     ATTR_LAST_SCHEDULED_RELATIVE_WEEKDAY,
     ATTR_LAST_SCHEDULED_WEEKDAY,
+    ATTR_NEXT_DELIVERY_RELATIVE_TIME,
     ATTR_NEXT_SCHEDULED_DATE,
     ATTR_NEXT_SCHEDULED_RELATIVE_WEEKDAY,
     ATTR_NEXT_SCHEDULED_WEEKDAY,
@@ -65,6 +67,16 @@ def _relative_weekday(target: date, today: date) -> str:
     if offset == 1:
         return "Tomorrow"
     return target.strftime("%A")
+
+
+def _relative_days_description(days: int) -> str | None:
+    """Return "In N day(s)" / "N day(s) ago", or None for today."""
+    if days == 0:
+        return None
+    unit = "day" if abs(days) == 1 else "days"
+    if days > 0:
+        return f"In {days} {unit}"
+    return f"{abs(days)} {unit} ago"
 
 
 def _device_info(postal_code: str) -> DeviceInfo:
@@ -136,6 +148,11 @@ class PostiNextDeliverySensor(CoordinatorEntity, SensorEntity):
             ATTR_NEXT_SCHEDULED_RELATIVE_WEEKDAY: (
                 _relative_weekday(next_delivery_date, today) if next_delivery_date else None
             ),
+            ATTR_NEXT_DELIVERY_RELATIVE_TIME: (
+                _relative_days_description((next_delivery_date - today).days)
+                if next_delivery_date
+                else None
+            ),
         }
 
     @property
@@ -176,6 +193,16 @@ class PostiDaysUntilNextSensor(CoordinatorEntity, SensorEntity):
         if not next_str:
             return None
         return (datetime.strptime(next_str, "%Y-%m-%d").date() - today).days
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return days-until-next attributes."""
+        days = self.native_value
+        return {
+            ATTR_NEXT_DELIVERY_RELATIVE_TIME: _relative_days_description(days)
+            if days is not None
+            else None
+        }
 
     @property
     def available(self) -> bool:
@@ -219,9 +246,13 @@ class PostiLastDeliverySensor(CoordinatorEntity, SensorEntity):
 
         if last:
             last_date = datetime.strptime(last, "%Y-%m-%d").date()
+            today = date.today()
             attrs[ATTR_LAST_SCHEDULED_DATE] = last
             attrs[ATTR_LAST_SCHEDULED_WEEKDAY] = last_date.strftime("%A")
-            attrs[ATTR_LAST_SCHEDULED_RELATIVE_WEEKDAY] = _relative_weekday(last_date, date.today())
+            attrs[ATTR_LAST_SCHEDULED_RELATIVE_WEEKDAY] = _relative_weekday(last_date, today)
+            attrs[ATTR_LAST_DELIVERY_RELATIVE_TIME] = _relative_days_description(
+                (last_date - today).days
+            )
 
         return attrs
 
@@ -255,6 +286,16 @@ class PostiDaysSinceLastSensor(CoordinatorEntity, SensorEntity):
         if not last:
             return None
         return (date.today() - datetime.strptime(last, "%Y-%m-%d").date()).days
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return days-since-last attributes."""
+        days = self.native_value
+        return {
+            ATTR_LAST_DELIVERY_RELATIVE_TIME: _relative_days_description(-days)
+            if days is not None
+            else None
+        }
 
     @property
     def available(self) -> bool:
